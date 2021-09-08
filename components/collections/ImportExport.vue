@@ -105,6 +105,21 @@
           @change="importFromJSON"
         />
         <SmartItem
+          v-tippy="{ theme: 'tooltip' }"
+          :title="$t('action.import_openapi')"
+          svg="file"
+          :label="$t('import.openapi')"
+          @click.native="openDialogChooseFileForOpenAPI"
+        />
+        <input
+          ref="inputChooseFileForOpenAPI"
+          class="input"
+          type="file"
+          style="display: none"
+          accept="application/json"
+          @change="importOpenAPI"
+        />
+        <SmartItem
           v-if="collectionsType.type == 'team-collections'"
           v-tippy="{ theme: 'tooltip' }"
           :title="$t('action.preserve_current')"
@@ -175,6 +190,7 @@
 import { defineComponent } from "@nuxtjs/composition-api"
 import { currentUser$ } from "~/helpers/fb/auth"
 import * as teamUtils from "~/helpers/teams/utils"
+import openapiParser from "~/helpers/openAPIParser"
 import { useReadonlyStream } from "~/helpers/utils/composables"
 import {
   restCollections$,
@@ -263,6 +279,11 @@ export default defineComponent({
     },
     openDialogChooseFileToImportFrom() {
       this.$refs.inputChooseFileToImportFrom.click()
+    },
+    openDialogChooseFileForOpenAPI() {
+      this.$refs.inputChooseFileForOpenAPI.click()
+      // this.$emit("openapi-import")
+      // this.$emit("hide-modal")
     },
     replaceWithJSON() {
       const reader = new FileReader()
@@ -365,6 +386,28 @@ export default defineComponent({
       }
       reader.readAsText(this.$refs.inputChooseFileToImportFrom.files[0])
       this.$refs.inputChooseFileToImportFrom.value = ""
+    },
+    importOpenAPI() {
+      const reader = new FileReader()
+      reader.onload = async ({ target }) => {
+        const content = target.result
+        try {
+          const collection = await openapiParser(JSON.parse(content))
+          if (collection) {
+            this.fileImported()
+            this.$emit("openapi-import", collection)
+            console.log({ collection })
+            this.$emit("hide-modal")
+          } else {
+            this.failedImport()
+            return
+          }
+        } catch (e) {
+          this.failedImport()
+        }
+      }
+      reader.readAsText(this.$refs.inputChooseFileForOpenAPI.files[0])
+      this.$refs.inputChooseFileForOpenAPI.value = ""
     },
     importFromMyCollections() {
       teamUtils
